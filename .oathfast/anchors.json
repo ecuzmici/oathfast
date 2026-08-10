@@ -11,7 +11,7 @@
       "tier": "ENFORCED",
       "cmd": "node test/no-network.test.js",
       "files": {
-        "test/no-network.test.js": "sha256:c2a059d6f86ebe59880bdefb545c41617f5dd2e805b1a35a141bbd819ff0f9ba"
+        "test/no-network.test.js": "sha256:6c38b8ea0c67cdb8c38bbd1595d2d1bdf2c0bcce4f050fab6d5fb3928ead214f"
       }
     },
     "S3": {
