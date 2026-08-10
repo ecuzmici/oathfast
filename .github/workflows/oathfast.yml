@@ -1,4 +1,4 @@
-name: stead
+name: oathfast
 
 on:
   push:
@@ -15,8 +15,8 @@ jobs:
           node-version: 20
       # The attestor, read-only: recompute every status from evidence and
       # fail when the committed file disagrees. CI never rewrites the file.
-      - name: stead verify
-        run: node bin/stead.js verify
+      - name: oathfast verify
+        run: node bin/oathfast.js verify
       # Dafny cheat-guard: no assumes/axioms/verify-false under src/.
       # Harmless no-op in repos without a src/ tree.
       - name: proof cheat-guard

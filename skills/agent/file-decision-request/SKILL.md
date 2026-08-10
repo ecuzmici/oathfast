@@ -53,6 +53,6 @@ Chosen option:
    surface the DR to the human through whatever channel the session
    has (PR comment, summary, chat).
 5. When a signed decision lands, the applying agent: applies the chosen
-   diff verbatim, re-runs `stead check`, and links the DR from the
+   diff verbatim, re-runs `oathfast check`, and links the DR from the
    commit message. `decisions/` is never garbage-collected —
    it is the durable trace of human intent.

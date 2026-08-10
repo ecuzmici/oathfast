@@ -6,8 +6,8 @@ description: Turn a signed plain-English guarantee line into a formal, checkable
 # formalize-claim
 
 Input: a guarantee id currently OPEN. Output: (a) a formal artifact
-under `machine/`, (b) an anchor entry in `.stead/anchors.json`, (c)
-`stead check` passing with the guarantee at its new tier. You do not
+under `machine/`, (b) an anchor entry in `.oathfast/anchors.json`, (c)
+`oathfast check` passing with the guarantee at its new tier. You do not
 edit the guarantee's text. If the English is ambiguous, file a decision
 request (see `file-decision-request`) instead of picking a reading.
 
@@ -33,8 +33,8 @@ request (see `file-decision-request`) instead of picking a reading.
    behavior (hard ceiling, `llm_behavior: true` in the anchor —
    FORMAT.md §2). Artifact: property test / eval harness with a fixed
    seed and pinned corpus. Nondeterministic tests are forbidden: a
-   flaky anchor makes `stead check` nondeterministic, which violates
-   Stead's own S1.
+   flaky anchor makes `oathfast check` nondeterministic, which violates
+   Oathfast's own S1.
 
 If no tier fits, the claim is not formalizable: file a DR proposing it
 be reworded, split, or moved to Given/Out of scope.
@@ -51,5 +51,5 @@ be reworded, split, or moved to Given/Out of scope.
 - Record failed formalization attempts in `machine/failures/` — a
   counterexample found while formalizing is valuable; hand it to
   `counterexample-curator`.
-- Finish by running `stead check`; the status transition line
+- Finish by running `oathfast check`; the status transition line
   (`G# : OPEN -> <TIER>`) is your completion evidence.

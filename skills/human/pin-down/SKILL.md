@@ -48,5 +48,5 @@ Present a fenced ```diff against the current GUARANTEES.md: new
 G-lines (all with status `OPEN` — evidence comes later), new Given
 lines, Out-of-scope additions. Include one sentence per line explaining
 the triage. Then stop. **Never apply the diff yourself** — the human
-applies and signs it. New guarantees enter as OPEN; `stead check`
+applies and signs it. New guarantees enter as OPEN; `oathfast check`
 raises them only when anchors exist.

@@ -7,7 +7,7 @@ description: Given a guarantee id (e.g. "why G3"), explain in plain English what
 
 The user names a guarantee id. Answer four questions, warmly and in
 plain English, without jargon. Everything you say must be grounded in
-the repo — read GUARANTEES.md, `.stead/anchors.json`, the anchored
+the repo — read GUARANTEES.md, `.oathfast/anchors.json`, the anchored
 tests/proofs, and git history for the line. Don't speculate.
 
 1. **What does it mean?** Restate the guarantee line concretely, with an

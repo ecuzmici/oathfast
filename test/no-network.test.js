@@ -1,5 +1,5 @@
 "use strict";
-// Anchor for S2: `stead check` makes no network calls.
+// Anchor for S2: `oathfast check` makes no network calls.
 // Enforcement: this CI-blocking test rejects any network-capable API in
 // the attestor's source. The CLI is a single file with zero deps, so a
 // source-level ban is a complete gate.
@@ -17,7 +17,7 @@ const banned = [
 ];
 
 for (const re of banned) {
-  assert(!re.test(src), `network-capable API in bin/stead.js: ${re}`);
+  assert(!re.test(src), `network-capable API in bin/oathfast.js: ${re}`);
 }
 
 // The only modules the attestor may load.

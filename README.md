@@ -1,24 +1,24 @@
-# Stead
+# Oathfast
 
-**Software built in your stead. Guarantees that hold.**
+**Software built by agents. Guarantees held fast.**
 
-Agents build your software now. Stead is the ledger that keeps them
+Agents build your software now. Oathfast is the ledger that keeps them
 honest with you: one small file of promises, and a deterministic
 checker that recomputes every promise's status from evidence. The
 untrusted party is not a coworker. It is your own agent.
 
 ## Two layers
 
-A Stead repo splits in two:
+A Oathfast repo splits in two:
 
 1. **Human layer** — `GUARANTEES.md` (the promises), `decisions/`
    (the signed record of every fork in the road). You read this layer.
-   You ack it with `stead sign`.
+   You ack it with `oathfast sign`.
 2. **Machine layer** — everything else: implementations, proofs,
    tickets, transcripts. As big and noisy as agents need. Fully
    regenerable. You never review it.
 
-The layers are related by **checking**, not maintenance. `stead check`
+The layers are related by **checking**, not maintenance. `oathfast check`
 recomputes every status from bound evidence and rewrites only the
 status column. The file cannot lie about what its anchors reported.
 
@@ -46,7 +46,7 @@ established), `BROKEN` (violated right now).
 
 An agent cannot talk its way up the ladder. Every tier above `SAMPLED`
 requires evidence of the right shape: `HOLDS` and `CHECKED` need a
-verifier command that `stead check` re-runs every time; `ENFORCED`
+verifier command that `oathfast check` re-runs every time; `ENFORCED`
 needs a hash binding to the enforcing config. Claims about LLM
 behavior can never exceed `SAMPLED`. The full grammar and semantics
 live in [FORMAT.md](FORMAT.md) — **the format is the product** (think
@@ -54,12 +54,12 @@ LSP: a protocol, not an editor).
 
 ## The loop
 
-- `stead check` — recompute every status and rewrite the status
+- `oathfast check` — recompute every status and rewrite the status
   column. Run it locally; agents run it too.
-- `stead sign` — ack the current text of every guarantee. The one
+- `oathfast sign` — ack the current text of every guarantee. The one
   deliberate human act. After it, an unacked edit or removal of a
   promise fails the next check.
-- `stead verify` — read-only, for CI. It writes nothing and fails
+- `oathfast verify` — read-only, for CI. It writes nothing and fails
   when the committed file disagrees with the evidence. Green CI means
   the file you read on GitHub matches what the anchors report.
 
@@ -70,19 +70,19 @@ turn on `verify --no-open`.
 ## 60-second quickstart
 
 ```bash
-npm install -g stead-cli     # the `stead` command AND the skill decks
-stead skills --global        # make the decks available in every project
+npm install -g @oathfast/cli     # the `oathfast` command AND the skill decks
+oathfast skills --global        # make the decks available in every project
 
 # adopt it in a repo:
-cd my-project && stead init .
-# → GUARANTEES.md, .stead/anchors.json, decisions/, .claude/skills/
-# write your first guarantee line, bind evidence in .stead/anchors.json,
-# run `stead sign`, and keep `stead verify` green in CI.
+cd my-project && oathfast init .
+# → GUARANTEES.md, .oathfast/anchors.json, decisions/, .claude/skills/
+# write your first guarantee line, bind evidence in .oathfast/anchors.json,
+# run `oathfast sign`, and keep `oathfast verify` green in CI.
 
 # or from source:
-git clone https://github.com/ecuzmici/stead && cd stead
+git clone https://github.com/ecuzmici/oathfast && cd oathfast
 npm test                     # the CLI's own test suite
-node bin/stead.js status     # pretty-print Stead's own guarantees
+node bin/oathfast.js status     # pretty-print Oathfast's own guarantees
 ```
 
 One install is the whole system: the CLI and the skills ship in the
@@ -90,12 +90,12 @@ same package, so there is no second thing to fetch and no version skew
 between the attestor and the decks that drive it.
 
 Each guarantee binds to evidence through an **anchor** in
-`.stead/anchors.json`: a check command that must exit 0, a verifier
+`.oathfast/anchors.json`: a check command that must exit 0, a verifier
 that must discharge the obligation, and/or file hashes that must
-match. `stead check` re-runs and re-hashes everything. The attestor
+match. `oathfast check` re-runs and re-hashes everything. The attestor
 itself is deterministic, offline, and never calls an LLM.
 
-**The honesty boundary:** anchors are your commands. Stead does not
+**The honesty boundary:** anchors are your commands. Oathfast does not
 sandbox them, so a nondeterministic or networked anchor can fool the
 tier it backs. The requirement that anchors stay deterministic and
 offline is an author obligation (FORMAT.md §3), not an enforced
@@ -113,8 +113,8 @@ the core CLI has zero Dafny dependency.
 ## Skills
 
 Two decks ship inside the npm package, in Claude Code SKILL.md format.
-`stead init` installs them into the project's `.claude/skills/`;
-`stead skills --global` installs them user-wide. Skills you already
+`oathfast init` installs them into the project's `.claude/skills/`;
+`oathfast skills --global` installs them user-wide. Skills you already
 have are never overwritten; a collision is reported with the path and
 the fix.
 
@@ -137,37 +137,37 @@ product decisions themselves.
 ## What this is not
 
 - **Not a test framework.** Your tests, proofs, and lints are the
-  evidence; Stead only binds them to promises and recomputes honesty.
+  evidence; Oathfast only binds them to promises and recomputes honesty.
 - **Not a proof assistant.** Bring Dafny, TLA+, Hypothesis, or
-  nothing; Stead ranks the evidence, it doesn't produce it.
-- **Not a write-gating runtime.** Stead attests *durable project
+  nothing; Oathfast ranks the evidence, it doesn't produce it.
+- **Not a write-gating runtime.** Oathfast attests *durable project
   promises* after the fact; it does not intercept individual agent
   writes — see Related work.
 
 ## Hardening for teams
 
-Stead is built solo-first. For a team, three additions are planned,
+Oathfast is built solo-first. For a team, three additions are planned,
 all additive to the format: CODEOWNERS plus branch protection on
 `GUARANTEES.md` and `decisions/` as a review backstop, cryptographic
-signatures (`git commit -S`, sigstore) behind `stead sign`, and
+signatures (`git commit -S`, sigstore) behind `oathfast sign`, and
 optional evidence expiry for audit regimes.
 
 ## Related work
 
 [**Detent**](https://pypi.org/project/detent) is a complementary
 write-time verification runtime: Detent gates individual agent writes;
-Stead attests durable project promises. The two compose — a Detent
+Oathfast attests durable project promises. The two compose — a Detent
 pipeline is a valid backend for `ENFORCED`-tier guarantees.
 
 ## Dogfood
 
 This repo ships its own [GUARANTEES.md](GUARANTEES.md), signed and
-checked read-only in CI: determinism of `stead check` (SAMPLED), no
+checked read-only in CI: determinism of `oathfast check` (SAMPLED), no
 network calls (ENFORCED, hash-bound to the source gate), tamper
 detection on the status column (SAMPLED), grammar conformance
 (SAMPLED), single-artifact install (SAMPLED), and signature drift
 detection (SAMPLED) — anchored for real in
-[.stead/anchors.json](.stead/anchors.json).
+[.oathfast/anchors.json](.oathfast/anchors.json).
 
 ## License
 

@@ -2,7 +2,7 @@
 
 Agents own this tree. **Humans never review it.** It can be as big and
 noisy as agents need; the human-facing contract lives entirely in
-`/GUARANTEES.md`, and the two are related by `stead check`, not by
+`/GUARANTEES.md`, and the two are related by `oathfast check`, not by
 anyone reading this directory.
 
 | Subtree | Contents |

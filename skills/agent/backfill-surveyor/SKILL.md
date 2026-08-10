@@ -1,6 +1,6 @@
 ---
 name: backfill-surveyor
-description: Brownfield adoption — mine an existing codebase (code, tests, CI, incidents, docs) into a draft all-OPEN GUARANTEES.md of AS-BUILT behavior for humans to triage. Use when introducing Stead to a repo that predates it.
+description: Brownfield adoption — mine an existing codebase (code, tests, CI, incidents, docs) into a draft all-OPEN GUARANTEES.md of AS-BUILT behavior for humans to triage. Use when introducing Oathfast to a repo that predates it.
 ---
 
 # backfill-surveyor

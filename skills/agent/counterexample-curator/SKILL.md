@@ -45,7 +45,7 @@ Fixed in <commit>, or escalated as DR-###, or converted to test <path>.
 4. **Escalate pattern breaks.** If a CE violates a guarantee currently
    at HOLDS/ENFORCED, that is a five-alarm finding: the evidence is
    lying (bad anchor, unsound spec, or environment drift). Re-run
-   `stead check`; if the status doesn't flip to BROKEN, the ANCHOR is
+   `oathfast check`; if the status doesn't flip to BROKEN, the ANCHOR is
    the bug — file a DR immediately.
 5. **Index.** Keep `machine/failures/INDEX.md` current: one line per CE
    (id, guarantee, status). Regenerable; rebuild it rather than

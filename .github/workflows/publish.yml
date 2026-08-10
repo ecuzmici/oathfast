@@ -20,7 +20,7 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
       - run: npm test
-      - run: node bin/stead.js check
+      - run: node bin/oathfast.js check
       - run: npm publish --provenance --access public ${OTP:+--otp="$OTP"}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
