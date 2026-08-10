@@ -235,7 +235,7 @@ function cmdStatus(root) {
   process.exit([...computed.values()].includes("BROKEN") ? 1 : 0);
 }
 
-function cmdInit(root) {
+function cmdInit(root, opts) {
   const name = path.basename(path.resolve(root));
   const gPath = path.join(root, "GUARANTEES.md");
   if (fs.existsSync(gPath)) fail(`${gPath} already exists`);
@@ -257,6 +257,122 @@ function cmdInit(root) {
     "# Machine layer\n\nAgents own this tree. Humans never review it.\nEverything here is regenerable except `decisions/`.\n"
   );
   console.log(`initialized stead in ${root}`);
+  if (opts.skills !== false) installSkills(root, { ...opts, global: false });
+}
+
+// ---------- skill decks ----------
+// The decks ship inside the package, so `npm i -g stead-cli` delivers the
+// whole system as one artifact. Installing them is pure filesystem work:
+// no network, no registry, nothing to resolve.
+
+const SKILLS_ROOT = path.join(__dirname, "..", "skills");
+const MARKER = ".stead-deck";
+
+function listDecks() {
+  if (!fs.existsSync(SKILLS_ROOT)) return [];
+  const out = [];
+  for (const deck of fs.readdirSync(SKILLS_ROOT).sort()) {
+    const deckDir = path.join(SKILLS_ROOT, deck);
+    if (!fs.statSync(deckDir).isDirectory()) continue;
+    for (const name of fs.readdirSync(deckDir).sort()) {
+      const dir = path.join(deckDir, name);
+      if (fs.existsSync(path.join(dir, "SKILL.md"))) out.push({ name, deck, dir });
+    }
+  }
+  return out;
+}
+
+function homeDir() {
+  const h = process.env.HOME || process.env.USERPROFILE;
+  if (!h) fail("cannot determine home directory (set HOME)");
+  return h;
+}
+
+function lstat(p) {
+  try { return fs.lstatSync(p); } catch { return null; }
+}
+
+// A deck is ours if it is a symlink into this package's skills/ tree, or a
+// copy carrying the marker file. Anything else belongs to the user and is
+// never overwritten.
+function ownedByStead(p) {
+  const st = lstat(p);
+  if (!st) return false;
+  if (st.isSymbolicLink()) {
+    try { return path.resolve(fs.readlinkSync(p)).startsWith(path.resolve(SKILLS_ROOT)); }
+    catch { return false; }
+  }
+  return st.isDirectory() && fs.existsSync(path.join(p, MARKER));
+}
+
+function copyDir(src, dst) {
+  fs.mkdirSync(dst, { recursive: true });
+  const entries = fs.readdirSync(src, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1));
+  for (const e of entries) {
+    const s = path.join(src, e.name);
+    const d = path.join(dst, e.name);
+    if (e.isDirectory()) copyDir(s, d);
+    else fs.copyFileSync(s, d);
+  }
+}
+
+function installDeck(deck, dest, mode, report) {
+  const target = path.join(dest, deck.name);
+  if (lstat(target)) {
+    if (!ownedByStead(target)) { report.skipped.push(deck.name); return; }
+    fs.rmSync(target, { recursive: true, force: true });
+  }
+  if (mode === "link") {
+    try {
+      fs.symlinkSync(path.resolve(deck.dir), target, "junction");
+      report.linked.push(deck.name);
+      return;
+    } catch { /* no symlink privilege — fall through to a copy */ }
+  }
+  copyDir(deck.dir, target);
+  fs.writeFileSync(path.join(target, MARKER), "installed by stead; safe to delete\n");
+  report.copied.push(deck.name);
+}
+
+function skillsDest(root, opts) {
+  return opts.global
+    ? path.join(homeDir(), ".claude", "skills")
+    : path.join(root, ".claude", "skills");
+}
+
+// Mode defaults: --global links, so `npm update -g stead-cli` refreshes the
+// decks in place. Project-local copies, so the decks commit cleanly and work
+// for teammates — a symlink into one machine's node_modules would not.
+function installSkills(root, opts) {
+  const decks = listDecks();
+  if (!decks.length) fail(`no skill decks found at ${SKILLS_ROOT}`);
+  const dest = skillsDest(root, opts);
+  const mode = opts.mode || (opts.global ? "link" : "copy");
+  fs.mkdirSync(dest, { recursive: true });
+  const report = { linked: [], copied: [], skipped: [] };
+  for (const d of decks) installDeck(d, dest, mode, report);
+  const n = report.linked.length + report.copied.length;
+  console.log(`stead skills: ${n} deck${n === 1 ? "" : "s"} ${mode === "link" ? "linked" : "copied"} into ${dest}`);
+  for (const s of report.skipped) console.error(`note: kept your existing skill "${s}" (not installed by stead)`);
+  return report;
+}
+
+function cmdSkills(root, opts) {
+  if (opts.list) {
+    for (const d of listDecks()) console.log(`${d.deck}/${d.name}`);
+    return;
+  }
+  if (opts.uninstall) {
+    const dest = skillsDest(root, opts);
+    let n = 0;
+    for (const d of listDecks()) {
+      const target = path.join(dest, d.name);
+      if (ownedByStead(target)) { fs.rmSync(target, { recursive: true, force: true }); n++; }
+    }
+    console.log(`stead skills: removed ${n} deck${n === 1 ? "" : "s"} from ${dest}`);
+    return;
+  }
+  installSkills(root, opts);
 }
 
 function fail(msg) {
@@ -267,12 +383,23 @@ function fail(msg) {
 // ---------- main ----------
 
 const [, , cmd, ...rest] = process.argv;
+const flags = new Set(rest.filter((a) => a.startsWith("-")));
 const root = path.resolve(rest.find((a) => !a.startsWith("-")) || ".");
+const opts = {
+  global: flags.has("--global") || flags.has("-g"),
+  list: flags.has("--list"),
+  uninstall: flags.has("--uninstall"),
+  skills: flags.has("--no-skills") ? false : true,
+  mode: flags.has("--link") ? "link" : flags.has("--copy") ? "copy" : null,
+};
 switch (cmd) {
   case "check": cmdCheck(root); break;
   case "status": cmdStatus(root); break;
-  case "init": cmdInit(root); break;
+  case "init": cmdInit(root, opts); break;
+  case "skills": cmdSkills(root, opts); break;
   default:
-    console.log("usage: stead <check|status|init> [dir]");
+    console.log("usage: stead <check|status|init|skills> [dir] [flags]");
+    console.log("  init [dir] [--no-skills]        scaffold a stead repo (installs skill decks)");
+    console.log("  skills [dir] [--global] [--link|--copy] [--list] [--uninstall]");
     process.exit(cmd ? 2 : 0);
 }

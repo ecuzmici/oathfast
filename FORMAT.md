@@ -190,7 +190,21 @@ file ("lost anchor"). Lost anchors make the guarantee `BROKEN` and
   `NO_COLOR`), without rewriting anything.
 - `stead init` — scaffold `GUARANTEES.md`, `.stead/anchors.json`, and
   `machine/{tickets,lemmas,failures,transcripts,decisions}/` into a
-  target directory.
+  target directory, then install the skill decks into
+  `<dir>/.claude/skills/`. `--no-skills` scaffolds only.
+- `stead skills` — install the skill decks that ship with the CLI.
+  `--global` installs into `~/.claude/skills/` (as symlinks, so
+  updating the package updates the decks); without it, into
+  `<dir>/.claude/skills/` (as copies, so they commit cleanly and work
+  for teammates). `--link` / `--copy` override the default,
+  `--list` prints what ships, `--uninstall` removes them. A skill
+  directory stead did not install is never overwritten. Like every
+  other command, this is offline filesystem work.
+
+An implementation is a valid Stead attestor if it provides `check`,
+`status`, and `init`. `skills` is a packaging convenience: the decks
+are swappable and an implementation may ship none, but if it ships
+them it must not clobber skills the user already has.
 
 ---
 

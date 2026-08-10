@@ -20,6 +20,11 @@
       "kind": "check",
       "tier": "SAMPLED",
       "cmd": "node test/parse.test.js"
+    },
+    "S5": {
+      "kind": "check",
+      "tier": "SAMPLED",
+      "cmd": "node test/skills.test.js"
     }
   }
 }

@@ -51,19 +51,25 @@ swappable; the format is the stable interface.
 ## 60-second quickstart
 
 ```bash
-npm install -g stead-cli    # installs the `stead` command
+npm install -g stead-cli     # the `stead` command AND both skill decks
+stead skills --global        # make the decks available in every project
+
+# adopt it in a repo:
+cd my-project && stead init .
+# → GUARANTEES.md, .stead/anchors.json, machine/, and .claude/skills/
+# write your first guarantee line, bind evidence in .stead/anchors.json,
+# then keep `stead check` green in CI.
 
 # or from source:
 git clone https://github.com/ecuzmici/stead && cd stead
 npm test                     # the CLI's own test suite
 node bin/stead.js check      # recompute Stead's own guarantees
 node bin/stead.js status     # pretty-print the table
-
-# adopt it in your repo:
-node /path/to/stead/bin/stead.js init .
-# write your first guarantee line, bind evidence in .stead/anchors.json,
-# then keep `stead check` green in CI.
 ```
+
+One install is the whole system: the CLI and the skills ship in the same
+package, so there is no second thing to fetch and no version skew between
+the attestor and the decks that drive it.
 
 Each guarantee binds to evidence through an **anchor** in
 `.stead/anchors.json` — a check command that must exit 0, and/or file
@@ -82,7 +88,10 @@ the core CLI has zero Dafny dependency.
 
 ## Skills
 
-Two decks ship with the repo, in Claude Code SKILL.md format:
+Two decks ship **inside the npm package**, in Claude Code SKILL.md
+format. `stead init` installs them into the project's `.claude/skills/`;
+`stead skills --global` installs them user-wide. Skills you already have
+are never overwritten — a name collision is reported and skipped.
 
 - **`skills/human/`** — `pin-down` (adversarial interview → proposed
   guarantee diff for you to sign), `why` (explain a guarantee: meaning,
@@ -121,8 +130,9 @@ pipeline is a valid backend for `ENFORCED`-tier guarantees.
 
 This repo ships its own [GUARANTEES.md](GUARANTEES.md), checked in CI:
 determinism of `stead check` (SAMPLED), no network calls (ENFORCED via
-a source-level gate), and tamper-detection on the status column
-(SAMPLED) — anchored for real in [.stead/anchors.json](.stead/anchors.json).
+a source-level gate), tamper-detection on the status column (SAMPLED),
+and that installing the CLI installs the skill decks with it (SAMPLED)
+— anchored for real in [.stead/anchors.json](.stead/anchors.json).
 
 ## License
 
