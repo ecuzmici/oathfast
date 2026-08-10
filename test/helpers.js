@@ -4,10 +4,10 @@ const path = require("path");
 const os = require("os");
 const { spawnSync } = require("child_process");
 
-const CLI = path.join(__dirname, "..", "bin", "stead.js");
+const CLI = path.join(__dirname, "..", "bin", "oathfast.js");
 
 function makeFixture(files) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stead-fixture-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "oathfast-fixture-"));
   for (const [rel, content] of Object.entries(files)) {
     const p = path.join(dir, rel);
     fs.mkdirSync(path.dirname(p), { recursive: true });
@@ -16,7 +16,7 @@ function makeFixture(files) {
   return dir;
 }
 
-function stead(args, cwd) {
+function oathfast(args, cwd) {
   const r = spawnSync(process.execPath, [CLI, ...args], {
     cwd, encoding: "utf8", env: { ...process.env, NO_COLOR: "1" },
   });
@@ -27,4 +27,4 @@ function assert(cond, msg) {
   if (!cond) { console.error("FAIL: " + msg); process.exit(1); }
 }
 
-module.exports = { makeFixture, stead, assert, CLI };
+module.exports = { makeFixture, oathfast, assert, CLI };

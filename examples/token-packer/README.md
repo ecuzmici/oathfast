@@ -16,12 +16,12 @@ status column.
 ```bash
 cd examples/token-packer
 python3 test_packer.py        # E2's evidence
-node ../../bin/stead.js check # recompute this example's statuses
+node ../../bin/oathfast.js check # recompute this example's statuses
 ```
 
-`stead check` here raises **E2** to SAMPLED. **E1** ships unanchored
+`oathfast check` here raises **E2** to SAMPLED. **E1** ships unanchored
 (OPEN) because raising it to HOLDS honestly requires actually running
-the verifier — Stead never marks HOLDS on the promise that a proof
+the verifier — Oathfast never marks HOLDS on the promise that a proof
 *would* pass. With [Dafny 4.x](https://github.com/dafny-lang/dafny)
 installed:
 
@@ -30,14 +30,14 @@ dafny verify packer.dfy
 ```
 
 and once that passes, bind the proof by adding to
-`.stead/anchors.json`:
+`.oathfast/anchors.json`:
 
 ```json
 "E1": { "kind": "check", "tier": "HOLDS", "cmd": "dafny verify packer.dfy" }
 ```
 
-Then `stead check` shows `E1 … HOLDS` — and will show `BROKEN` the day
+Then `oathfast check` shows `E1 … HOLDS` — and will show `BROKEN` the day
 the proof stops passing.
 
-The core `stead` CLI has zero Dafny dependency; everything
+The core `oathfast` CLI has zero Dafny dependency; everything
 Dafny-flavored lives in this optional directory.

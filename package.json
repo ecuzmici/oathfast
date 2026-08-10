@@ -1,15 +1,15 @@
 {
-  "name": "stead-cli",
-  "version": "0.2.0",
-  "description": "Software built in your stead. Guarantees that hold.",
+  "name": "@oathfast/cli",
+  "version": "0.3.0",
+  "description": "Software built by agents. Guarantees held fast.",
   "license": "MIT",
-  "bin": { "stead": "bin/stead.js" },
+  "bin": { "oathfast": "bin/oathfast.js" },
   "files": ["bin/", "skills/", "FORMAT.md", "README.md", "LICENSE"],
   "scripts": {
-    "test": "node test/determinism.test.js && node test/no-network.test.js && node test/tamper.test.js && node test/parse.test.js && node test/skills.test.js",
-    "check": "node bin/stead.js check"
+    "test": "node test/determinism.test.js && node test/no-network.test.js && node test/tamper.test.js && node test/parse.test.js && node test/skills.test.js && node test/sign.test.js && node test/verify.test.js",
+    "check": "node bin/oathfast.js check"
   },
   "engines": { "node": ">=18" },
-  "repository": { "type": "git", "url": "git+https://github.com/ecuzmici/stead.git" },
+  "repository": { "type": "git", "url": "git+https://github.com/ecuzmici/oathfast.git" },
   "keywords": ["guarantees", "verification", "ai-agents", "attestation", "formal-methods"]
 }

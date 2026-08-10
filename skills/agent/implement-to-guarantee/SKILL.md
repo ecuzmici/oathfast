@@ -7,7 +7,7 @@ description: Implement or modify code so that a specific guarantee's anchored ch
 
 Input: a guarantee id plus its anchor (spec, test, or proof
 obligation). Output: implementation code under the project source tree
-such that `stead check` shows the guarantee at its declared tier.
+such that `oathfast check` shows the guarantee at its declared tier.
 
 ## Hard constraints (violating any of these is task failure)
 
@@ -20,7 +20,7 @@ such that `stead check` shows the guarantee at its declared tier.
   or any other evidence-weakening escape hatch. CI greps for these.
 - MUST NOT touch the status column of GUARANTEES.md (it is computed).
 - MUST NOT weaken sibling guarantees to make the target pass. Run the
-  full `stead check`, not just your anchor.
+  full `oathfast check`, not just your anchor.
 
 ## The loop
 
@@ -31,7 +31,7 @@ such that `stead check` shows the guarantee at its declared tier.
 2. **Green.** Write the minimum implementation that plausibly
    discharges the failure. Prefer the dumb-but-provable version first;
    optimize only after green.
-3. **Verify.** Re-run the anchor, then full `stead check`. Record each
+3. **Verify.** Re-run the anchor, then full `oathfast check`. Record each
    iteration's failure signature in your working notes.
 4. Repeat. Change strategy, not just tactics, when a failure signature
    repeats twice.
@@ -49,5 +49,5 @@ weakened spec is not.
 
 ## Completion
 
-`stead check` exits 0, target guarantee at its declared tier, no other
+`oathfast check` exits 0, target guarantee at its declared tier, no other
 guarantee degraded, transcript dropped in `machine/transcripts/`.

@@ -20,7 +20,7 @@ blocked_by: T-012         # optional
 status: open | in-progress | done | escalated
 
 ## Objective
-What "done" means, stated as the observable stead-check outcome
+What "done" means, stated as the observable oathfast-check outcome
 (e.g. "G3 transitions OPEN -> SAMPLED").
 
 ## Context

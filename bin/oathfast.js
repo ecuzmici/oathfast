@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 "use strict";
-// stead — deterministic attestor for GUARANTEES.md. Implements FORMAT.md v0.1.
+// oathfast — deterministic attestor for GUARANTEES.md. Implements FORMAT.md v0.1.
 // No network. No LLM calls. Zero dependencies.
 
 const fs = require("fs");
@@ -88,6 +88,14 @@ function validate(doc, anchors) {
       if (!ANCHOR_TIERS.includes(a.tier)) errors.push(`anchor ${id}: tier must be one of ${ANCHOR_TIERS.join("/")}`);
       if (a.kind === "check" && typeof a.cmd !== "string") errors.push(`anchor ${id}: kind "check" requires "cmd"`);
       if (a.kind === "files" && !a.files) errors.push(`anchor ${id}: kind "files" requires "files"`);
+      // Earned tiers (FORMAT.md §2): everything above SAMPLED must carry
+      // evidence of the right shape, not just a declaration.
+      if ((a.tier === "HOLDS" || a.tier === "CHECKED") && typeof a.verifier !== "string") {
+        errors.push(`anchor ${id}: tier ${a.tier} requires a "verifier" command that oathfast re-runs (FORMAT.md §2)`);
+      }
+      if (a.tier === "ENFORCED" && !a.files) {
+        errors.push(`anchor ${id}: tier ENFORCED requires "files" binding the enforcing config (FORMAT.md §2)`);
+      }
       if (a.llm_behavior === true && ANCHOR_TIERS.indexOf(a.tier) < ANCHOR_TIERS.indexOf("SAMPLED")) {
         errors.push(`anchor ${id}: LLM-behavior guarantees can never exceed SAMPLED (FORMAT.md §2)`);
       }
@@ -102,6 +110,14 @@ function sha256(filePath) {
   return "sha256:" + crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
+function runCmd(id, label, cmd, root, notes) {
+  const r = spawnSync(cmd, { shell: true, cwd: root, stdio: ["ignore", "pipe", "pipe"] });
+  if (r.status === 0) return true;
+  const tail = ((r.stderr || "").toString() + (r.stdout || "").toString()).trim().split("\n").slice(-3).join(" | ");
+  notes.push(`${id}: ${label} failed (exit ${r.status})${tail ? " — " + tail : ""}`);
+  return false;
+}
+
 function runAnchor(id, anchor, root, notes) {
   if (!anchor) return "OPEN";
   if (anchor.kind === "trusted") return "TRUSTED";
@@ -114,15 +130,71 @@ function runAnchor(id, anchor, root, notes) {
       if (got !== want) { ok = false; notes.push(`${id}: hash mismatch for ${rel}`); }
     }
   }
-  if (ok && anchor.kind === "check") {
-    const r = spawnSync(anchor.cmd, { shell: true, cwd: root, stdio: ["ignore", "pipe", "pipe"] });
-    if (r.status !== 0) {
-      ok = false;
-      const tail = ((r.stderr || "").toString() + (r.stdout || "").toString()).trim().split("\n").slice(-3).join(" | ");
-      notes.push(`${id}: check failed (exit ${r.status})${tail ? " — " + tail : ""}`);
-    }
-  }
+  if (ok && anchor.kind === "check") ok = runCmd(id, "check", anchor.cmd, root, notes);
+  // The verifier is what earns HOLDS/CHECKED: it re-runs on every check.
+  if (ok && typeof anchor.verifier === "string") ok = runCmd(id, "verifier", anchor.verifier, root, notes);
   return ok ? anchor.tier : "BROKEN";
+}
+
+// ---------- signatures ----------
+// .oathfast/signatures.json is the human ack: a hash of each line's text,
+// plus who acked it and when. `oathfast sign` is the one deliberate human
+// act; check and verify fail when signed text drifts from its ack.
+
+function textHash(text) {
+  return "sha256:" + crypto.createHash("sha256").update(text).digest("hex");
+}
+
+function loadSignatures(root) {
+  const p = path.join(root, ".oathfast", "signatures.json");
+  if (!fs.existsSync(p)) return null;
+  try { return JSON.parse(fs.readFileSync(p, "utf8")); }
+  catch (e) { fail(`.oathfast/signatures.json is not valid JSON: ${e.message}`); }
+}
+
+function signatureErrors(doc, sigs) {
+  if (!sigs) return [];
+  const errors = [];
+  const lines = new Map();
+  for (const g of doc.guarantees) lines.set(g.id, g.text);
+  for (const t of doc.givens) lines.set(t.id, t.text);
+  for (const [id, s] of Object.entries(sigs.signatures || {})) {
+    if (!lines.has(id)) errors.push(`signed line ${id} was removed without a re-ack (run "oathfast sign")`);
+    else if (textHash(lines.get(id)) !== s.hash) errors.push(`signed text of ${id} changed without a re-ack (run "oathfast sign")`);
+  }
+  return errors;
+}
+
+function signerName() {
+  const r = spawnSync("git", ["config", "user.name"], { encoding: "utf8" });
+  const name = r.status === 0 ? (r.stdout || "").trim() : "";
+  return name || process.env.USER || process.env.USERNAME || "unknown";
+}
+
+function cmdSign(root) {
+  const { doc, anchors } = load(root);
+  const errors = validate(doc, anchors);
+  if (errors.length) {
+    for (const e of errors) console.error("error: " + e);
+    process.exit(2);
+  }
+  const prev = loadSignatures(root) || { version: 1, signatures: {} };
+  const next = { version: 1, signatures: {} };
+  const by = signerName();
+  const date = new Date().toISOString().slice(0, 10);
+  let acked = 0, kept = 0;
+  for (const line of [...doc.guarantees, ...doc.givens]) {
+    const hash = textHash(line.text);
+    const old = prev.signatures[line.id];
+    if (old && old.hash === hash) { next.signatures[line.id] = old; kept++; }
+    else { next.signatures[line.id] = { hash, by, date }; acked++; }
+  }
+  const dropped = Object.keys(prev.signatures).filter((id) => !next.signatures[id]).length;
+  fs.mkdirSync(path.join(root, ".oathfast"), { recursive: true });
+  fs.writeFileSync(path.join(root, ".oathfast", "signatures.json"), JSON.stringify(next, null, 2) + "\n");
+  console.log(
+    `oathfast sign: ${acked} newly acked, ${kept} unchanged${dropped ? `, ${dropped} removed` : ""} (by ${by}, ${date})`
+  );
 }
 
 // ---------- rewriting ----------
@@ -154,15 +226,18 @@ function paint(status) {
   return useColor ? COLORS[status] + status + "\x1b[0m" : status;
 }
 
-function printTable(doc, computed) {
+function printTable(doc, computed, sigs) {
   if (doc.title) console.log(doc.title.replace(/^#\s*/, "") + "\n");
   const idW = Math.max(...doc.guarantees.map((g) => g.id.length), 2);
   const txtW = Math.max(...doc.guarantees.map((g) => g.text.length), 4);
   for (const g of doc.guarantees) {
     const status = computed.get(g.id);
     const given = g.givenRefs.length ? "  given " + g.givenRefs.join(", ") : "";
+    // TRUSTED rests on nothing but the ack, so show how old the ack is.
+    const sig = sigs && sigs.signatures ? sigs.signatures[g.id] : null;
+    const ack = status === "TRUSTED" ? (sig ? `  acked ${sig.date}` : "  unacked") : "";
     console.log(
-      `${g.id.padEnd(idW)}  ${g.text.padEnd(txtW)}  ${paint(status).padEnd(useColor ? STATUS_WIDTH + 9 : STATUS_WIDTH)}${given}`
+      `${g.id.padEnd(idW)}  ${g.text.padEnd(txtW)}  ${paint(status).padEnd(useColor ? STATUS_WIDTH + 9 : STATUS_WIDTH)}${given}${ack}`
     );
   }
   if (doc.givens.length) {
@@ -178,13 +253,13 @@ function printTable(doc, computed) {
 
 function load(root) {
   const gPath = path.join(root, "GUARANTEES.md");
-  const aPath = path.join(root, ".stead", "anchors.json");
-  if (!fs.existsSync(gPath)) fail(`no GUARANTEES.md in ${root} (run "stead init")`);
+  const aPath = path.join(root, ".oathfast", "anchors.json");
+  if (!fs.existsSync(gPath)) fail(`no GUARANTEES.md in ${root} (run "oathfast init")`);
   const doc = parseGuarantees(fs.readFileSync(gPath, "utf8"));
   let anchors = { version: 1, anchors: {} };
   if (fs.existsSync(aPath)) {
     try { anchors = JSON.parse(fs.readFileSync(aPath, "utf8")); }
-    catch (e) { fail(`.stead/anchors.json is not valid JSON: ${e.message}`); }
+    catch (e) { fail(`.oathfast/anchors.json is not valid JSON: ${e.message}`); }
   }
   return { doc, anchors, gPath };
 }
@@ -197,9 +272,15 @@ function compute(doc, anchors, root, notes) {
   return computed;
 }
 
+// OPEN never fails a default run, but the debt is always named.
+function openSummary(computed) {
+  const open = [...computed.entries()].filter(([, s]) => s === "OPEN").map(([id]) => id);
+  return open.length ? `, ${open.length} OPEN: ${open.join(" ")}` : "";
+}
+
 function cmdCheck(root) {
   const { doc, anchors, gPath } = load(root);
-  const errors = validate(doc, anchors);
+  const errors = [...validate(doc, anchors), ...signatureErrors(doc, loadSignatures(root))];
   if (errors.length) {
     for (const e of errors) console.error("error: " + e);
     process.exit(2);
@@ -217,8 +298,35 @@ function cmdCheck(root) {
   }
   for (const n of notes) console.error("note: " + n);
   const broken = [...computed.values()].filter((s) => s === "BROKEN").length;
-  console.log(broken === 0 ? "stead check: ok" : `stead check: ${broken} BROKEN`);
+  console.log(broken === 0 ? `oathfast check: ok${openSummary(computed)}` : `oathfast check: ${broken} BROKEN`);
   process.exit(broken === 0 ? 0 : 1);
+}
+
+// verify is check's read-only twin for CI: compute everything, write
+// nothing, and fail when the committed file disagrees with the evidence.
+function cmdVerify(root, opts) {
+  const { doc, anchors } = load(root);
+  const errors = [...validate(doc, anchors), ...signatureErrors(doc, loadSignatures(root))];
+  if (errors.length) {
+    for (const e of errors) console.error("error: " + e);
+    process.exit(2);
+  }
+  const notes = [];
+  const computed = compute(doc, anchors, root, notes);
+  const drifted = doc.guarantees.filter((g) => computed.get(g.id) !== g.status);
+  for (const g of drifted) {
+    console.error(`error: ${g.id}: file says ${g.status}, evidence says ${computed.get(g.id)}`);
+  }
+  for (const n of notes) console.error("note: " + n);
+  const broken = [...computed.values()].filter((s) => s === "BROKEN").length;
+  const open = [...computed.values()].filter((s) => s === "OPEN").length;
+  const openFail = opts.noOpen && open > 0;
+  if (openFail) console.error(`error: --no-open: ${open} OPEN guarantee${open === 1 ? "" : "s"}`);
+  const bad = [];
+  if (drifted.length) bad.push(`${drifted.length} drifted`);
+  if (broken) bad.push(`${broken} BROKEN`);
+  console.log(bad.length ? `oathfast verify: ${bad.join(", ")}` : `oathfast verify: ok${openSummary(computed)}`);
+  process.exit(drifted.length || broken || openFail ? 1 : 0);
 }
 
 function cmdStatus(root) {
@@ -230,8 +338,9 @@ function cmdStatus(root) {
   }
   const notes = [];
   const computed = compute(doc, anchors, root, notes);
-  printTable(doc, computed);
+  printTable(doc, computed, loadSignatures(root));
   for (const n of notes) console.error("note: " + n);
+  for (const e of signatureErrors(doc, loadSignatures(root))) console.error("note: " + e);
   process.exit([...computed.values()].includes("BROKEN") ? 1 : 0);
 }
 
@@ -239,34 +348,30 @@ function cmdInit(root, opts) {
   const name = path.basename(path.resolve(root));
   const gPath = path.join(root, "GUARANTEES.md");
   if (fs.existsSync(gPath)) fail(`${gPath} already exists`);
-  fs.mkdirSync(path.join(root, ".stead"), { recursive: true });
-  for (const d of ["tickets", "lemmas", "failures", "transcripts", "decisions"]) {
-    fs.mkdirSync(path.join(root, "machine", d), { recursive: true });
-    fs.writeFileSync(path.join(root, "machine", d, ".gitkeep"), "");
-  }
+  // Kernel only (DR-005): the machine/ subtrees are created lazily by
+  // the agent skills that use them.
+  fs.mkdirSync(path.join(root, ".oathfast"), { recursive: true });
+  fs.mkdirSync(path.join(root, "decisions"), { recursive: true });
+  fs.writeFileSync(path.join(root, "decisions", ".gitkeep"), "");
   fs.writeFileSync(
     gPath,
     `# GUARANTEES — ${name}\n\nG1  <state the first promise in one plain-English line>  OPEN\n\n## Given\n\n## Out of scope\n`
   );
   fs.writeFileSync(
-    path.join(root, ".stead", "anchors.json"),
+    path.join(root, ".oathfast", "anchors.json"),
     JSON.stringify({ version: 1, anchors: {} }, null, 2) + "\n"
   );
-  fs.writeFileSync(
-    path.join(root, "machine", "README.md"),
-    "# Machine layer\n\nAgents own this tree. Humans never review it.\nEverything here is regenerable except `decisions/`.\n"
-  );
-  console.log(`initialized stead in ${root}`);
+  console.log(`initialized oathfast in ${root}`);
   if (opts.skills !== false) installSkills(root, { ...opts, global: false });
 }
 
 // ---------- skill decks ----------
-// The decks ship inside the package, so `npm i -g stead-cli` delivers the
+// The decks ship inside the package, so `npm i -g @oathfast/cli` delivers the
 // whole system as one artifact. Installing them is pure filesystem work:
 // no network, no registry, nothing to resolve.
 
 const SKILLS_ROOT = path.join(__dirname, "..", "skills");
-const MARKER = ".stead-deck";
+const MARKER = ".oathfast-deck";
 
 function listDecks() {
   if (!fs.existsSync(SKILLS_ROOT)) return [];
@@ -295,7 +400,7 @@ function lstat(p) {
 // A deck is ours if it is a symlink into this package's skills/ tree, or a
 // copy carrying the marker file. Anything else belongs to the user and is
 // never overwritten.
-function ownedByStead(p) {
+function ownedByOathfast(p) {
   const st = lstat(p);
   if (!st) return false;
   if (st.isSymbolicLink()) {
@@ -319,7 +424,7 @@ function copyDir(src, dst) {
 function installDeck(deck, dest, mode, report) {
   const target = path.join(dest, deck.name);
   if (lstat(target)) {
-    if (!ownedByStead(target)) { report.skipped.push(deck.name); return; }
+    if (!ownedByOathfast(target)) { report.skipped.push(deck.name); return; }
     fs.rmSync(target, { recursive: true, force: true });
   }
   if (mode === "link") {
@@ -330,7 +435,7 @@ function installDeck(deck, dest, mode, report) {
     } catch { /* no symlink privilege — fall through to a copy */ }
   }
   copyDir(deck.dir, target);
-  fs.writeFileSync(path.join(target, MARKER), "installed by stead; safe to delete\n");
+  fs.writeFileSync(path.join(target, MARKER), "installed by oathfast; safe to delete\n");
   report.copied.push(deck.name);
 }
 
@@ -340,7 +445,7 @@ function skillsDest(root, opts) {
     : path.join(root, ".claude", "skills");
 }
 
-// Mode defaults: --global links, so `npm update -g stead-cli` refreshes the
+// Mode defaults: --global links, so `npm update -g @oathfast/cli` refreshes the
 // decks in place. Project-local copies, so the decks commit cleanly and work
 // for teammates — a symlink into one machine's node_modules would not.
 function installSkills(root, opts) {
@@ -352,8 +457,12 @@ function installSkills(root, opts) {
   const report = { linked: [], copied: [], skipped: [] };
   for (const d of decks) installDeck(d, dest, mode, report);
   const n = report.linked.length + report.copied.length;
-  console.log(`stead skills: ${n} deck${n === 1 ? "" : "s"} ${mode === "link" ? "linked" : "copied"} into ${dest}`);
-  for (const s of report.skipped) console.error(`note: kept your existing skill "${s}" (not installed by stead)`);
+  console.log(`oathfast skills: ${n} deck${n === 1 ? "" : "s"} ${mode === "link" ? "linked" : "copied"} into ${dest}`);
+  for (const s of report.skipped) {
+    console.error(
+      `note: kept your existing skill "${s}" at ${path.join(dest, s)} (not installed by oathfast) — remove it and re-run "oathfast skills" to install oathfast's deck`
+    );
+  }
   return report;
 }
 
@@ -367,16 +476,16 @@ function cmdSkills(root, opts) {
     let n = 0;
     for (const d of listDecks()) {
       const target = path.join(dest, d.name);
-      if (ownedByStead(target)) { fs.rmSync(target, { recursive: true, force: true }); n++; }
+      if (ownedByOathfast(target)) { fs.rmSync(target, { recursive: true, force: true }); n++; }
     }
-    console.log(`stead skills: removed ${n} deck${n === 1 ? "" : "s"} from ${dest}`);
+    console.log(`oathfast skills: removed ${n} deck${n === 1 ? "" : "s"} from ${dest}`);
     return;
   }
   installSkills(root, opts);
 }
 
 function fail(msg) {
-  console.error("stead: " + msg);
+  console.error("oathfast: " + msg);
   process.exit(2);
 }
 
@@ -391,15 +500,21 @@ const opts = {
   uninstall: flags.has("--uninstall"),
   skills: flags.has("--no-skills") ? false : true,
   mode: flags.has("--link") ? "link" : flags.has("--copy") ? "copy" : null,
+  noOpen: flags.has("--no-open"),
 };
 switch (cmd) {
   case "check": cmdCheck(root); break;
+  case "verify": cmdVerify(root, opts); break;
+  case "sign": cmdSign(root); break;
   case "status": cmdStatus(root); break;
   case "init": cmdInit(root, opts); break;
   case "skills": cmdSkills(root, opts); break;
   default:
-    console.log("usage: stead <check|status|init|skills> [dir] [flags]");
-    console.log("  init [dir] [--no-skills]        scaffold a stead repo (installs skill decks)");
+    console.log("usage: oathfast <check|verify|sign|status|init|skills> [dir] [flags]");
+    console.log("  check [dir]                     recompute statuses and rewrite the status column");
+    console.log("  verify [dir] [--no-open]        read-only check for CI; fails on drift, writes nothing");
+    console.log("  sign [dir]                      ack the current text of every guarantee and Given");
+    console.log("  init [dir] [--no-skills]        scaffold an oathfast repo (installs skill decks)");
     console.log("  skills [dir] [--global] [--link|--copy] [--list] [--uninstall]");
     process.exit(cmd ? 2 : 0);
 }

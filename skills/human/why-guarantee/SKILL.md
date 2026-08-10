@@ -1,5 +1,5 @@
 ---
-name: why
+name: why-guarantee
 description: Given a guarantee id (e.g. "why G3"), explain in plain English what the guarantee means, how it is checked, what it rests on, and its history. Use when the user asks what a guarantee is, why it holds, or whether they can rely on it.
 ---
 
@@ -7,7 +7,7 @@ description: Given a guarantee id (e.g. "why G3"), explain in plain English what
 
 The user names a guarantee id. Answer four questions, warmly and in
 plain English, without jargon. Everything you say must be grounded in
-the repo — read GUARANTEES.md, `.stead/anchors.json`, the anchored
+the repo — read GUARANTEES.md, `.oathfast/anchors.json`, the anchored
 tests/proofs, and git history for the line. Don't speculate.
 
 1. **What does it mean?** Restate the guarantee line concretely, with an
@@ -31,7 +31,7 @@ tests/proofs, and git history for the line. Don't speculate.
    guarantee if it fell (it degrades to nothing — say so).
 
 4. **History.** From `git log -p` on GUARANTEES.md: when the line was
-   added, status transitions, and any `machine/decisions/DR-*.md` that
+   added, status transitions, and any `decisions/DR-*.md` that
    mentions the id. One short paragraph, newest first.
 
 Keep the whole answer under a screen. If the id doesn't exist, list

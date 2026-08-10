@@ -1,6 +1,6 @@
 ---
 name: file-decision-request
-description: File a decision request (machine/decisions/DR-###.md) when guarantees conflict, an obligation is unprovable, or intent is ambiguous. Agents never resolve product decisions themselves. Use whenever forward progress requires choosing among readings of human intent.
+description: File a decision request (decisions/DR-###.md) when guarantees conflict, an obligation is unprovable, or intent is ambiguous. Agents never resolve product decisions themselves. Use whenever forward progress requires choosing among readings of human intent.
 ---
 
 # file-decision-request
@@ -20,9 +20,9 @@ consequence — make those, and note them in the ticket.
 
 ## Procedure
 
-1. Number: next unused `DR-###` in `machine/decisions/` (zero-padded,
+1. Number: next unused `DR-###` in `decisions/` (zero-padded,
    sequential; never reuse numbers, even of rejected DRs).
-2. Write `machine/decisions/DR-###.md` per FORMAT.md §5:
+2. Write `decisions/DR-###.md` per FORMAT.md §5:
 
 ```markdown
 # DR-### — <one-line title>
@@ -53,6 +53,6 @@ Chosen option:
    surface the DR to the human through whatever channel the session
    has (PR comment, summary, chat).
 5. When a signed decision lands, the applying agent: applies the chosen
-   diff verbatim, re-runs `stead check`, and links the DR from the
-   commit message. `machine/decisions/` is never garbage-collected —
+   diff verbatim, re-runs `oathfast check`, and links the DR from the
+   commit message. `decisions/` is never garbage-collected —
    it is the durable trace of human intent.
