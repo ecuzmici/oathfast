@@ -1,12 +1,12 @@
 {
   "name": "stead-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Software built in your stead. Guarantees that hold.",
   "license": "MIT",
   "bin": { "stead": "bin/stead.js" },
-  "files": ["bin/", "FORMAT.md", "README.md", "LICENSE"],
+  "files": ["bin/", "skills/", "FORMAT.md", "README.md", "LICENSE"],
   "scripts": {
-    "test": "node test/determinism.test.js && node test/no-network.test.js && node test/tamper.test.js && node test/parse.test.js",
+    "test": "node test/determinism.test.js && node test/no-network.test.js && node test/tamper.test.js && node test/parse.test.js && node test/skills.test.js",
     "check": "node bin/stead.js check"
   },
   "engines": { "node": ">=18" },
