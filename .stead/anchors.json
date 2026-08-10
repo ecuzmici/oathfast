@@ -9,7 +9,10 @@
     "S2": {
       "kind": "check",
       "tier": "ENFORCED",
-      "cmd": "node test/no-network.test.js"
+      "cmd": "node test/no-network.test.js",
+      "files": {
+        "test/no-network.test.js": "sha256:c2a059d6f86ebe59880bdefb545c41617f5dd2e805b1a35a141bbd819ff0f9ba"
+      }
     },
     "S3": {
       "kind": "check",
@@ -25,6 +28,11 @@
       "kind": "check",
       "tier": "SAMPLED",
       "cmd": "node test/skills.test.js"
+    },
+    "S6": {
+      "kind": "check",
+      "tier": "SAMPLED",
+      "cmd": "node test/sign.test.js"
     }
   }
 }

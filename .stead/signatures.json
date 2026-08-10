@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "signatures": {
+    "S1": {
+      "hash": "sha256:325e312f6f6a31c3b7d82af568af5947e808ea4361d9b6abeeb8a889f7a0f8b8",
+      "by": "Emil Cuzmici",
+      "date": "2026-08-10"
+    },
+    "S2": {
+      "hash": "sha256:b70f48e158fc389f0aca51bfc3e8a9c5654522612e9878f3e79b802b793e19bd",
+      "by": "Emil Cuzmici",
+      "date": "2026-08-10"
+    },
+    "S3": {
+      "hash": "sha256:13e384c3751529ae4a3aacd6dbbd90faaa9b3472b8cba8c97edd8d40dd61d2ad",
+      "by": "Emil Cuzmici",
+      "date": "2026-08-10"
+    },
+    "S4": {
+      "hash": "sha256:b9360840683b3893b6510541a0f801dc15b95918a5461ed017fa775c5224c2c0",
+      "by": "Emil Cuzmici",
+      "date": "2026-08-10"
+    },
+    "S5": {
+      "hash": "sha256:4c10ecd9f978200672aa3279e40aba9a61b93eab5b425841d477287cd172fd52",
+      "by": "Emil Cuzmici",
+      "date": "2026-08-10"
+    },
+    "S6": {
+      "hash": "sha256:e95d6c484665ea445cada1cc2d19f011fe8018daaa5abe6e7d48a35a39bc3402",
+      "by": "Emil Cuzmici",
+      "date": "2026-08-10"
+    },
+    "T1": {
+      "hash": "sha256:eb379d3d72b4233f4173bf8685f5c941441b712385b3e4c19b0ac6c41839a014",
+      "by": "Emil Cuzmici",
+      "date": "2026-08-10"
+    }
+  }
+}

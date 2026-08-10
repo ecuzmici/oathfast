@@ -2,27 +2,25 @@
 
 **Software built in your stead. Guarantees that hold.**
 
-Agents now build software in your stead. Stead is the signed list of
-what that software promises — and the checker that keeps the list
-honest.
+Agents build your software now. Stead is the ledger that keeps them
+honest with you: one small file of promises, and a deterministic
+checker that recomputes every promise's status from evidence. The
+untrusted party is not a coworker. It is your own agent.
 
 ## Two layers
 
 A Stead repo splits in two:
 
-1. **Human layer** — one small file, `GUARANTEES.md`: what the system
-   promises, what those promises rest on (**Given**), and what was
-   never promised (**Out of scope**). Humans review only this layer,
-   and sign every change to it.
-2. **Machine layer** — everything else: implementations, proofs, agent
-   tickets, transcripts, failures. As big and noisy as agents need.
-   Never human-reviewed.
+1. **Human layer** — `GUARANTEES.md` (the promises), `decisions/`
+   (the signed record of every fork in the road). You read this layer.
+   You ack it with `stead sign`.
+2. **Machine layer** — everything else: implementations, proofs,
+   tickets, transcripts. As big and noisy as agents need. Fully
+   regenerable. You never review it.
 
-The layers are related by **checking**, not maintenance. A
-deterministic CLI, `stead check`, recomputes every guarantee's status
-from bound evidence and rewrites only the status column. The file
-physically cannot lie: hand-edit a status to something flattering and
-the next check reverts it.
+The layers are related by **checking**, not maintenance. `stead check`
+recomputes every status from bound evidence and rewrites only the
+status column. The file cannot lie about what its anchors reported.
 
 ```markdown
 # GUARANTEES — <project>
@@ -39,43 +37,69 @@ T2  The eval corpus represents real drift.
 Report styling, prompt wording.
 ```
 
-Statuses are a ladder of evidence strength — `HOLDS` (machine-proved),
-`ENFORCED` (an engine rejects violations), `CHECKED` (model-checked),
-`SAMPLED` (property tests / evals), `TRUSTED` (rests on a Given),
-`OPEN` (stated, not yet established), `BROKEN` (violated right now).
-Claims about LLM behavior can never exceed `SAMPLED`. The full grammar
-and semantics live in [FORMAT.md](FORMAT.md) — **the format is the
-product** (think LSP: a protocol, not an editor). The skill decks are
-swappable; the format is the stable interface.
+## Statuses are earned, not declared
+
+The ladder: `HOLDS` (machine-proved), `ENFORCED` (an engine rejects
+violations), `CHECKED` (model-checked), `SAMPLED` (property tests,
+evals), `TRUSTED` (rests on a Given), `OPEN` (stated, not yet
+established), `BROKEN` (violated right now).
+
+An agent cannot talk its way up the ladder. Every tier above `SAMPLED`
+requires evidence of the right shape: `HOLDS` and `CHECKED` need a
+verifier command that `stead check` re-runs every time; `ENFORCED`
+needs a hash binding to the enforcing config. Claims about LLM
+behavior can never exceed `SAMPLED`. The full grammar and semantics
+live in [FORMAT.md](FORMAT.md) — **the format is the product** (think
+LSP: a protocol, not an editor).
+
+## The loop
+
+- `stead check` — recompute every status and rewrite the status
+  column. Run it locally; agents run it too.
+- `stead sign` — ack the current text of every guarantee. The one
+  deliberate human act. After it, an unacked edit or removal of a
+  promise fails the next check.
+- `stead verify` — read-only, for CI. It writes nothing and fails
+  when the committed file disagrees with the evidence. Green CI means
+  the file you read on GitHub matches what the anchors report.
+
+`OPEN` never fails a default run, but every summary names the open
+ids, so unproven promises stay visible. Projects past bootstrap can
+turn on `verify --no-open`.
 
 ## 60-second quickstart
 
 ```bash
-npm install -g stead-cli     # the `stead` command AND both skill decks
+npm install -g stead-cli     # the `stead` command AND the skill decks
 stead skills --global        # make the decks available in every project
 
 # adopt it in a repo:
 cd my-project && stead init .
-# → GUARANTEES.md, .stead/anchors.json, machine/, and .claude/skills/
+# → GUARANTEES.md, .stead/anchors.json, decisions/, .claude/skills/
 # write your first guarantee line, bind evidence in .stead/anchors.json,
-# then keep `stead check` green in CI.
+# run `stead sign`, and keep `stead verify` green in CI.
 
 # or from source:
 git clone https://github.com/ecuzmici/stead && cd stead
 npm test                     # the CLI's own test suite
-node bin/stead.js check      # recompute Stead's own guarantees
-node bin/stead.js status     # pretty-print the table
+node bin/stead.js status     # pretty-print Stead's own guarantees
 ```
 
-One install is the whole system: the CLI and the skills ship in the same
-package, so there is no second thing to fetch and no version skew between
-the attestor and the decks that drive it.
+One install is the whole system: the CLI and the skills ship in the
+same package, so there is no second thing to fetch and no version skew
+between the attestor and the decks that drive it.
 
 Each guarantee binds to evidence through an **anchor** in
-`.stead/anchors.json` — a check command that must exit 0, and/or file
-hashes that must match. `stead check` re-runs and re-hashes everything;
-it is deterministic, offline, and never calls an LLM. The attestor is
-deterministic glue.
+`.stead/anchors.json`: a check command that must exit 0, a verifier
+that must discharge the obligation, and/or file hashes that must
+match. `stead check` re-runs and re-hashes everything. The attestor
+itself is deterministic, offline, and never calls an LLM.
+
+**The honesty boundary:** anchors are your commands. Stead does not
+sandbox them, so a nondeterministic or networked anchor can fool the
+tier it backs. The requirement that anchors stay deterministic and
+offline is an author obligation (FORMAT.md §3), not an enforced
+property.
 
 ## The tier ladder, worked
 
@@ -88,36 +112,45 @@ the core CLI has zero Dafny dependency.
 
 ## Skills
 
-Two decks ship **inside the npm package**, in Claude Code SKILL.md
-format. `stead init` installs them into the project's `.claude/skills/`;
-`stead skills --global` installs them user-wide. Skills you already have
-are never overwritten — a name collision is reported and skipped.
+Two decks ship inside the npm package, in Claude Code SKILL.md format.
+`stead init` installs them into the project's `.claude/skills/`;
+`stead skills --global` installs them user-wide. Skills you already
+have are never overwritten; a collision is reported with the path and
+the fix.
 
 - **`skills/human/`** — `pin-down` (adversarial interview → proposed
-  guarantee diff for you to sign), `why` (explain a guarantee: meaning,
-  evidence, trust, history), `trust-review` (how your Given section —
-  your trust surface — moved over time).
+  guarantee diff for you to sign), `why-guarantee` (explain a
+  guarantee: meaning, evidence, trust, history), `trust-review` (how
+  your Given section — your trust surface — moved over time).
 - **`skills/agent/`** — `formalize-claim`, `implement-to-guarantee`
   (red-green-verify; may never weaken a spec — escalates instead),
   `decompose-work`, `file-decision-request`, `backfill-surveyor`
-  (brownfield survey → all-OPEN as-built draft), `counterexample-curator`,
-  `lemma-librarian`.
+  (brownfield survey → all-OPEN as-built draft),
+  `counterexample-curator`, `lemma-librarian`.
 
 When agents hit a product decision — conflicting guarantees, an
 unprovable obligation, ambiguous intent — they file a **decision
-request** (`machine/decisions/DR-###.md`) with concrete options as
-GUARANTEES.md diffs, and a human signs the outcome. Agents never
-resolve product decisions themselves.
+request** (`decisions/DR-###.md`) with concrete options as
+GUARANTEES.md diffs, and you sign the outcome. Agents never resolve
+product decisions themselves.
 
 ## What this is not
 
 - **Not a test framework.** Your tests, proofs, and lints are the
   evidence; Stead only binds them to promises and recomputes honesty.
-- **Not a proof assistant.** Bring Dafny, TLA+, Hypothesis, or nothing;
-  Stead ranks the evidence, it doesn't produce it.
+- **Not a proof assistant.** Bring Dafny, TLA+, Hypothesis, or
+  nothing; Stead ranks the evidence, it doesn't produce it.
 - **Not a write-gating runtime.** Stead attests *durable project
   promises* after the fact; it does not intercept individual agent
   writes — see Related work.
+
+## Hardening for teams
+
+Stead is built solo-first. For a team, three additions are planned,
+all additive to the format: CODEOWNERS plus branch protection on
+`GUARANTEES.md` and `decisions/` as a review backstop, cryptographic
+signatures (`git commit -S`, sigstore) behind `stead sign`, and
+optional evidence expiry for audit regimes.
 
 ## Related work
 
@@ -128,11 +161,13 @@ pipeline is a valid backend for `ENFORCED`-tier guarantees.
 
 ## Dogfood
 
-This repo ships its own [GUARANTEES.md](GUARANTEES.md), checked in CI:
-determinism of `stead check` (SAMPLED), no network calls (ENFORCED via
-a source-level gate), tamper-detection on the status column (SAMPLED),
-and that installing the CLI installs the skill decks with it (SAMPLED)
-— anchored for real in [.stead/anchors.json](.stead/anchors.json).
+This repo ships its own [GUARANTEES.md](GUARANTEES.md), signed and
+checked read-only in CI: determinism of `stead check` (SAMPLED), no
+network calls (ENFORCED, hash-bound to the source gate), tamper
+detection on the status column (SAMPLED), grammar conformance
+(SAMPLED), single-artifact install (SAMPLED), and signature drift
+detection (SAMPLED) — anchored for real in
+[.stead/anchors.json](.stead/anchors.json).
 
 ## License
 

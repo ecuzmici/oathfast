@@ -13,9 +13,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      # The attestor: recompute every guarantee's status from evidence.
-      - name: stead check
-        run: node bin/stead.js check
+      # The attestor, read-only: recompute every status from evidence and
+      # fail when the committed file disagrees. CI never rewrites the file.
+      - name: stead verify
+        run: node bin/stead.js verify
       # Dafny cheat-guard: no assumes/axioms/verify-false under src/.
       # Harmless no-op in repos without a src/ tree.
       - name: proof cheat-guard

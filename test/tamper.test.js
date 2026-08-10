@@ -14,7 +14,7 @@ const dir = makeFixture({
     version: 1,
     anchors: {
       G1: { kind: "check", tier: "SAMPLED", cmd: "exit 0" },
-      G2: { kind: "check", tier: "ENFORCED", cmd: "exit 1" },
+      G2: { kind: "check", tier: "SAMPLED", cmd: "exit 1" },
     },
   }),
 });
